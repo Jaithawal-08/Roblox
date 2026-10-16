@@ -187,6 +187,20 @@ LevelUpEffectRemote.OnClientEvent:Connect(function(newLevel: number)
 	local HUD = GetHUD()
 	if not HUD then return end
 
+	-- Fanfare (SnatchConfig AUDIO; presentation only).
+	pcall(function()
+		local Config = require(ReplicatedStorage:WaitForChild("SnatchConfig"))
+		local id = Config.AUDIO and Config.AUDIO.LevelUp
+		if id then
+			local s = Instance.new("Sound")
+			s.SoundId = "rbxassetid://" .. id
+			s.Volume = 0.7
+			s.Parent = HUD
+			s.Ended:Connect(function() s:Destroy() end)
+			s:Play()
+		end
+	end)
+
 	-- Create big LEVEL UP text
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "LevelUpEffect"

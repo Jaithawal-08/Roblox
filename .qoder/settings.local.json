@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find \"$HOME/.qoder/projects\" -iname \"freebuff-chat-2026.md\" 2>/dev/null; find \"C:\\\\CodingProjects\\\\Roblox-Game\" -iname \"freebuff-chat-2026.md\" 2>/dev/null)",
+      "Bash(find \"$HOME/.qoder/projects\" -iname \"*freebuff*\" 2>/dev/null; echo \"---projects tree---\"; find \"C:\\\\CodingProjects\\\\Roblox-Game\" -iname \"*freebuff*\" 2>/dev/null; echo \"---broader---\"; find \"C:\\\\Users\\\\kladd\" -iname \"freebuff-chat-2026.md\" 2>/dev/null)",
+      "Bash(find:*)"
+    ]
+  }
+}

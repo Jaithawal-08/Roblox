@@ -72,6 +72,13 @@ def add_vector2(props, name, x, y):
     ET.SubElement(el, "X").text = str(x)
     ET.SubElement(el, "Y").text = str(y)
 
+def add_vector3(props, name, x, y, z):
+    el = ET.SubElement(props, "Vector3")
+    el.set("name", name)
+    ET.SubElement(el, "X").text = str(x)
+    ET.SubElement(el, "Y").text = str(y)
+    ET.SubElement(el, "Z").text = str(z)
+
 def make_script(parent, script_type, name, source, disabled=False):
     """script_type: 'Script', 'LocalScript', 'ModuleScript'"""
     item, props = make_item(script_type)
@@ -198,6 +205,10 @@ MAIN_HUD_LOCAL_SRC    = read_script("MainHUD_LocalScript.lua")
 REMOTES_SETUP_SRC     = read_script("RemotesSetup.lua")
 TEST_SCRIPT_SRC       = read_script("TestScript.lua")
 STATS_PANEL_SRC       = read_script("StatsPanelController.lua")
+SNATCH_CONFIG_SRC     = read_script("snatch-a-beast/SnatchConfig.lua")
+BEAST_SERVICE_SRC     = read_script("snatch-a-beast/BeastService.lua")
+SAVE_MANAGER_SRC      = read_script("snatch-a-beast/SaveManager.lua")
+CATCH_CLIENT_SRC      = read_script("snatch-a-beast/CatchClient.lua")
 
 # ============================
 # BUILD THE ROBLOX XML
@@ -241,6 +252,21 @@ ET.SubElement(cf, "R10").text = "0"; ET.SubElement(cf, "R11").text = "1"; ET.Sub
 ET.SubElement(cf, "R20").text = "0"; ET.SubElement(cf, "R21").text = "0"; ET.SubElement(cf, "R22").text = "1"
 ws_item.append(spawn_item)
 
+# Baseplate (shared ground: ShadowRealm spawn + Snatch trail/pedestals need footing)
+base_item, base_props = make_item("Part")
+add_string(base_props, "Name", "Baseplate")
+add_bool(base_props, "Anchored", True)
+add_vector3(base_props, "Size", 512, 1, 512)
+bcf = ET.SubElement(base_props, "CoordinateFrame")
+bcf.set("name", "CFrame")
+ET.SubElement(bcf, "X").text = "0"
+ET.SubElement(bcf, "Y").text = "-0.5"
+ET.SubElement(bcf, "Z").text = "0"
+ET.SubElement(bcf, "R00").text = "1"; ET.SubElement(bcf, "R01").text = "0"; ET.SubElement(bcf, "R02").text = "0"
+ET.SubElement(bcf, "R10").text = "0"; ET.SubElement(bcf, "R11").text = "1"; ET.SubElement(bcf, "R12").text = "0"
+ET.SubElement(bcf, "R20").text = "0"; ET.SubElement(bcf, "R21").text = "0"; ET.SubElement(bcf, "R22").text = "1"
+ws_item.append(base_item)
+
 # Lobby folder
 lobby_folder = make_folder(ws_item, "Lobby")
 dungeon_portals = make_folder(ws_item, "DungeonPortals")
@@ -263,6 +289,9 @@ modules_folder = make_folder(rs_item, "Modules")
 # RankConfig module
 make_script(modules_folder, "ModuleScript", "RankConfig", RANK_CONFIG_SRC)
 
+# SnatchConfig module (Snatch-a-Beast tuning; BeastService requires it at RS root)
+make_script(rs_item, "ModuleScript", "SnatchConfig", SNATCH_CONFIG_SRC)
+
 root.append(rs_item)
 
 # ============================
@@ -279,6 +308,10 @@ make_script(sss_item, "Script", "RemotesSetup", REMOTES_SETUP_SRC)
 
 # PlayerDataService
 make_script(services_folder, "Script", "PlayerDataService", PLAYER_DATA_SRC)
+
+# Snatch-a-Beast slice (one game: direct children so BeastService finds SaveManager)
+make_script(sss_item, "Script", "BeastService", BEAST_SERVICE_SRC)
+make_script(sss_item, "ModuleScript", "SaveManager", SAVE_MANAGER_SRC)
 
 # TestScript (gives XP for testing)
 make_script(sss_item, "Script", "TestScript", TEST_SCRIPT_SRC)
@@ -540,6 +573,9 @@ add_string(sp_props, "Name", "StarterPlayer")
 sps_folder_item, sps_folder_props = make_item("StarterPlayerScripts")
 add_string(sps_folder_props, "Name", "StarterPlayerScripts")
 sp_item.append(sps_folder_item)
+
+# Snatch-a-Beast catch HUD (LocalScript; starter containers copy it per player)
+make_script(sps_folder_item, "LocalScript", "CatchClient", CATCH_CLIENT_SRC)
 
 root.append(sp_item)
 

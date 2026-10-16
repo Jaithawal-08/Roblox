@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": ["./roblox-skills"],
+  "mcp": {
+    "servers": {
+      "roblox-studio": {
+        "type": "local",
+        "command": ["npx", "-y", "@el4cteo/rbx-studio-mcp"]
+      }
+    }
+  }
+}

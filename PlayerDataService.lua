@@ -11,7 +11,13 @@ local RunService = game:GetService("RunService")
 -- ===========================
 -- DATASTORE SETUP
 -- ===========================
-local PlayerDataStore = DataStoreService:GetDataStore("ShadowRealm_PlayerData_v1")
+local PlayerDataStore = nil
+pcall(function()
+	PlayerDataStore = DataStoreService:GetDataStore("ShadowRealm_PlayerData_v1")
+end)
+if not PlayerDataStore then
+	warn("[PlayerDataService] DataStore unavailable - session-only mode (publish place + enable API access to persist).")
+end
 local AUTO_SAVE_INTERVAL = 60 -- seconds between auto-saves
 
 -- ===========================
@@ -107,20 +113,22 @@ local function LoadData(player: Player): table
 	local success = false
 	local attempts = 0
 
-	repeat
-		attempts += 1
-		local ok, result = pcall(function()
-			return PlayerDataStore:GetAsync(userId)
-		end)
+	if PlayerDataStore then
+		repeat
+			attempts += 1
+			local ok, result = pcall(function()
+				return PlayerDataStore:GetAsync(userId)
+			end)
 
-		if ok then
-			success = true
-			data = result
-		else
-			warn("[PlayerDataService] GetAsync failed for", player.Name, "- Attempt", attempts, ":", result)
-			task.wait(2 * attempts) -- exponential backoff
-		end
-	until success or attempts >= 5
+			if ok then
+				success = true
+				data = result
+			else
+				warn("[PlayerDataService] GetAsync failed for", player.Name, "- Attempt", attempts, ":", result)
+				task.wait(2 * attempts) -- exponential backoff
+			end
+		until success or attempts >= 5
+	end
 
 	if not success then
 		warn("[PlayerDataService] Could not load data for", player.Name, "- Using default data")
@@ -155,6 +163,7 @@ local function SaveData(player: Player)
 	local userId = tostring(player.UserId)
 	local data = PlayerData[userId]
 	if not data then return end
+	if not PlayerDataStore then return end -- session-only: nothing to persist
 
 	local attempts = 0
 	local success = false
@@ -235,6 +244,17 @@ local function SendStatsToClient(player: Player)
 	}
 
 	UpdateStatsRemote:FireClient(player, statsPacket)
+
+	-- Single-game wallet sync: every writer (GiveCoins, SetCoins, TestScript) keeps
+	-- all coin displays in agreement: leaderboard mirror + SnatchHUD tick.
+	local ls = player:FindFirstChild("leaderstats")
+	local coinVal = ls and ls:FindFirstChild("Coins")
+	if coinVal then coinVal.Value = data.Coins end
+	local snatchRemotes = ReplicatedStorage:FindFirstChild("SnatchRemotes")
+	local incomeTick = snatchRemotes and snatchRemotes:FindFirstChild("IncomeTick")
+	if incomeTick then
+		incomeTick:FireClient(player, { balance = data.Coins })
+	end
 end
 
 -- ===========================
@@ -312,6 +332,20 @@ function GiveGems(player: Player, amount: number)
 	if not data then return end
 
 	data.Gems += amount
+	SendStatsToClient(player)
+end
+
+-- ===========================
+-- PUBLIC API: SET COINS
+-- ===========================
+-- Absolute setter for systems that price/spend (e.g. BeastService catch cost).
+-- Single-game economy: this is the wallet owner; callers mirror to leaderstats.
+function SetCoins(player: Player, amount: number)
+	local userId = tostring(player.UserId)
+	local data = PlayerData[userId]
+	if not data then return end
+
+	data.Coins = math.max(0, math.floor(amount))
 	SendStatsToClient(player)
 end
 
@@ -432,6 +466,7 @@ end)
 _G.PlayerDataAPI = {
 	GiveXP     = GiveXP,
 	GiveCoins  = GiveCoins,
+	SetCoins   = SetCoins,
 	GiveGems   = GiveGems,
 	GetData    = GetData,
 	SaveData   = SaveData,
